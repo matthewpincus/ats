@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
 export default function Home() {
@@ -12,7 +12,23 @@ export default function Home() {
     nextStep: '',
     resume: null
   });
+  const [applicants, setApplicants] = useState([]);
+  const [sortField, setSortField] = useState('');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [filterTerm, setFilterTerm] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    fetchApplicants();
+  }, []);
+
+  const fetchApplicants = async () => {
+    const response = await fetch('/api/applicants');
+    if (response.ok) {
+      const data = await response.json();
+      setApplicants(data);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,21 +58,86 @@ export default function Home() {
     });
 
     if (response.ok) {
-      router.push('/success');
+      fetchApplicants();
+      setFormData({
+        name: '',
+        role: '',
+        notes: '',
+        fitRating: 0,
+        techRating: 0,
+        schedule: '',
+        nextStep: '',
+        resume: null
+      });
     }
   };
 
+  const handleSort = (field) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredAndSortedApplicants = applicants
+    .filter(applicant => 
+      applicant.name.toLowerCase().includes(filterTerm.toLowerCase()) ||
+      applicant.role.toLowerCase().includes(filterTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
+      if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
   return (
-    <form onSubmit={handleSubmit}>
-      <input name="name" value={formData.name} onChange={handleChange} placeholder="Name" required />
-      <input name="role" value={formData.role} onChange={handleChange} placeholder="Role" required />
-      <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Notes" />
-      <input type="number" name="fitRating" value={formData.fitRating} onChange={handleChange} placeholder="Fit Rating" min="0" max="10" />
-      <input type="number" name="techRating" value={formData.techRating} onChange={handleChange} placeholder="Tech Rating" min="0" max="10" />
-      <input type="date" name="schedule" value={formData.schedule} onChange={handleChange} />
-      <input name="nextStep" value={formData.nextStep} onChange={handleChange} placeholder="Next Step" />
-      <input type="file" name="resume" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
-      <button type="submit">Submit</button>
-    </form>
+    <div>
+      <h1>Applicant Tracking System</h1>
+      <form onSubmit={handleSubmit}>
+        <label>Name: <input name="name" value={formData.name} onChange={handleChange} required /></label>
+        <label>Role: <input name="role" value={formData.role} onChange={handleChange} required /></label>
+        <label>Notes: <textarea name="notes" value={formData.notes} onChange={handleChange} /></label>
+        <label>Fit Rating: <input type="number" name="fitRating" value={formData.fitRating} onChange={handleChange} min="0" max="10" /></label>
+        <label>Tech Rating: <input type="number" name="techRating" value={formData.techRating} onChange={handleChange} min="0" max="10" /></label>
+        <label>Schedule: <input type="date" name="schedule" value={formData.schedule} onChange={handleChange} /></label>
+        <label>Next Step: <input name="nextStep" value={formData.nextStep} onChange={handleChange} /></label>
+        <label>Resume: <input type="file" name="resume" onChange={handleFileChange} accept=".pdf,.doc,.docx" /></label>
+        <button type="submit">Submit</button>
+      </form>
+
+      <h2>Applicants</h2>
+      <input 
+        type="text" 
+        placeholder="Filter applicants..." 
+        value={filterTerm} 
+        onChange={(e) => setFilterTerm(e.target.value)} 
+      />
+      <table>
+        <thead>
+          <tr>
+            <th onClick={() => handleSort('name')}>Name</th>
+            <th onClick={() => handleSort('role')}>Role</th>
+            <th onClick={() => handleSort('fitRating')}>Fit Rating</th>
+            <th onClick={() => handleSort('techRating')}>Tech Rating</th>
+            <th onClick={() => handleSort('schedule')}>Schedule</th>
+            <th onClick={() => handleSort('nextStep')}>Next Step</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredAndSortedApplicants.map((applicant, index) => (
+            <tr key={index}>
+              <td>{applicant.name}</td>
+              <td>{applicant.role}</td>
+              <td>{applicant.fitRating}</td>
+              <td>{applicant.techRating}</td>
+              <td>{applicant.schedule}</td>
+              <td>{applicant.nextStep}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
