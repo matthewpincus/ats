@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -10,23 +9,27 @@ export default function Home() {
     techRating: 0,
     schedule: '',
     nextStep: '',
-    resume: null
   });
   const [applicants, setApplicants] = useState([]);
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   const [filterTerm, setFilterTerm] = useState('');
-  const router = useRouter();
 
   useEffect(() => {
     fetchApplicants();
   }, []);
 
   const fetchApplicants = async () => {
-    const response = await fetch('/api/applicants');
-    if (response.ok) {
-      const data = await response.json();
-      setApplicants(data);
+    try {
+      const response = await fetch('/api/applicants');
+      if (response.ok) {
+        const data = await response.json();
+        setApplicants(data);
+      } else {
+        console.error('Failed to fetch applicants');
+      }
+    } catch (error) {
+      console.error('Error fetching applicants:', error);
     }
   };
 
@@ -38,37 +41,40 @@ export default function Home() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    setFormData(prevState => ({
-      ...prevState,
-      resume: e.target.files[0]
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formDataToSend = new FormData();
-    for (const key in formData) {
-      formDataToSend.append(key, formData[key]);
-    }
-
-    const response = await fetch('/api/applicants', {
-      method: 'POST',
-      body: formDataToSend
-    });
-
-    if (response.ok) {
-      fetchApplicants();
-      setFormData({
-        name: '',
-        role: '',
-        notes: '',
-        fitRating: 0,
-        techRating: 0,
-        schedule: '',
-        nextStep: '',
-        resume: null
+    
+    try {
+      const response = await fetch('/api/applicants', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Submission successful:', result);
+        fetchApplicants();
+        // Reset form
+        setFormData({
+          name: '',
+          role: '',
+          notes: '',
+          fitRating: 0,
+          techRating: 0,
+          schedule: '',
+          nextStep: '',
+        });
+      } else {
+        const errorData = await response.json();
+        console.error('Submission failed:', errorData);
+        alert('Failed to submit application. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('An error occurred. Please try again.');
     }
   };
 
@@ -103,7 +109,6 @@ export default function Home() {
         <label>Tech Rating: <input type="number" name="techRating" value={formData.techRating} onChange={handleChange} min="0" max="10" /></label>
         <label>Schedule: <input type="date" name="schedule" value={formData.schedule} onChange={handleChange} /></label>
         <label>Next Step: <input name="nextStep" value={formData.nextStep} onChange={handleChange} /></label>
-        <label>Resume: <input type="file" name="resume" onChange={handleFileChange} accept=".pdf,.doc,.docx" /></label>
         <button type="submit">Submit</button>
       </form>
 
@@ -130,10 +135,10 @@ export default function Home() {
             <tr key={index}>
               <td>{applicant.name}</td>
               <td>{applicant.role}</td>
-              <td>{applicant.fitRating}</td>
-              <td>{applicant.techRating}</td>
+              <td>{applicant.fit_rating}</td>
+              <td>{applicant.tech_rating}</td>
               <td>{applicant.schedule}</td>
-              <td>{applicant.nextStep}</td>
+              <td>{applicant.next_step}</td>
             </tr>
           ))}
         </tbody>
